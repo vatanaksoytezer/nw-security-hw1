@@ -5,14 +5,15 @@ from threading import Thread
 from MainWindow import Ui_MainWindow
 
 class Client():
-    def __init__(self, textBrowser):
+    def __init__(self, mainwindow):
         self.sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
         self.host = "127.0.0.1"
         self.port = 65437
+        self.mainwindow = mainwindow
         # Non blocking connection
         # self.sock.settimeout(0.0)
         self.isConnected = False
-        self.textBrowser = textBrowser
+        self.textBrowser = mainwindow.textBrowser
         try:
             self.sock.connect((self.host, self.port))   
             self.isConnected = True
@@ -26,7 +27,8 @@ class Client():
                 data = self.sock.recv(1024)
                 msg = self.decrypt(data.decode("utf-8"))
                 self.textBrowser.append("Message received from client: " + msg)
-                # TODO: If rekey -> call rekey function
+                if msg == "rekey":
+                    self.mainwindow.rekey()
             except:
                 pass
 
@@ -37,11 +39,11 @@ class Client():
     def terminate(self):
         self.isConnected = False
 
-    # TODO: Implement encrypt
+    # TODO (Erkut): Implement encrypt
     def encrypt(self, msg):
         return msg
 
-    # TODO: Implement decrypt
+    # TODO (Erkut): Implement decrypt
     def decrypt(self, msg):
         return msg
 
@@ -57,8 +59,13 @@ class MainWindow(QtWidgets.QMainWindow, Ui_MainWindow):
         self.isClientUp = False
 
     def rekeyButtonCallback(self):
-        self.textBrowser.append("Rekey issued from client")
-        self.sendEncryptedCommand("rekey clicked")
+        # self.textBrowser.append("Rekey issued from client")
+        self.sendEncryptedCommand("rekey")
+        self.rekey()
+    
+    # TODO (Erkut): Implement rekey
+    def rekey(self):
+        self.textBrowser.append("Rekeying ...")
 
     def sendCommandCallback(self):
         text = self.commandPlainTextEdit.toPlainText()
@@ -67,13 +74,13 @@ class MainWindow(QtWidgets.QMainWindow, Ui_MainWindow):
 
     def runClientCallback(self):
         if(not self.isClientUp):
-            self.client = Client(self.textBrowser)
+            self.client = Client(self)
             self.clientThread = Thread(target = self.client.run, args =())
             self.clientThread.start()
             if(self.client.isConnected):
                 self.textBrowser.append("Client stated")
                 self.isClientUp = True
-                # TODO: Add green client status button
+                # TODO (Vatan): Add green client status button
         else:
             self.textBrowser.append("Client already running")
 
@@ -87,6 +94,7 @@ class MainWindow(QtWidgets.QMainWindow, Ui_MainWindow):
     def closeEvent(self, event):
         if(self.isClientUp):
             self.client.terminate()
+            # TODO (Vatan): Fix assertion error
             self.clientThread._stop()
     
 def main():

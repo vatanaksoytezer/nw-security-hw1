@@ -5,7 +5,7 @@ from threading import Thread
 from MainWindow import Ui_MainWindow
 
 class Server():
-    def __init__(self, textBrowser):
+    def __init__(self, mainwindow):
         self.serv = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
         self.host = "127.0.0.1"
         self.port = 65437
@@ -13,7 +13,8 @@ class Server():
         # self.serv.settimeout(0.0)
         self.running = True
         self.isConnected = False
-        self.textBrowser = textBrowser
+        self.mainwindow = mainwindow
+        self.textBrowser = mainwindow.textBrowser
 
     def run(self):
         if(self.running):
@@ -27,9 +28,10 @@ class Server():
                         self.isConnected = True
                         try:
                             data = self.conn.recv(1024)
-                            dataStr = data.decode("utf-8")
-                            self.textBrowser.append("Received " + dataStr)
-                            # TODO: If rekey -> call rekey function
+                            msg = data.decode("utf-8")
+                            self.textBrowser.append("Received " + msg)
+                            if msg == "rekey":
+                                self.mainwindow.rekey()
                         except:
                             pass
             except:
@@ -48,11 +50,11 @@ class Server():
         if(self.isConnected):
             self.conn.close()
 
-    # TODO: To be filled
+    # TODO (Erkut): Implement encrypt
     def decrypt(self, msg):
         return msg
 
-    # TODO: To be filled
+    # TODO (Erkut): Implement decrypt
     def encrypt(self, msg):
         return msg
 
@@ -70,8 +72,13 @@ class MainWindow(QtWidgets.QMainWindow, Ui_MainWindow):
         self.server = None
 
     def rekeyButtonCallback(self):
-        self.textBrowser.append("Rekey issued from server")
-        self.sendEncryptedCommand("rekey clicked")
+        # self.textBrowser.append("Rekey issued from server")
+        self.sendEncryptedCommand("rekey")
+        self.rekey()
+
+    # TODO (Erkut): Implement rekey
+    def rekey(self):
+        self.textBrowser.append("Rekeying ...")
 
     def sendCommandCallback(self):
         text = self.commandPlainTextEdit.toPlainText()
@@ -80,19 +87,18 @@ class MainWindow(QtWidgets.QMainWindow, Ui_MainWindow):
 
     def runServerCallback(self):
         if(not self.serverRunning):
-            self.textBrowser.append("Starting server ...")
-            self.server = Server(self.textBrowser)
+            self.server = Server(self)
             self.serverThread = Thread(target = self.server.run, args =()) 
             self.serverThread.start()
             # ? Check if server started
             self.serverRunning = True
-            # TODO: Add green server status button
+            self.textBrowser.append("Server started")
+            # TODO (Vatan): Add green server status button
         else:
             self.textBrowser.append("Server already running")
 
     def sendEncryptedCommand(self, msg):
         self.textBrowser.append("Sending encrypted message: " + msg)
-        # TODO: Fix send message from server
         if(self.serverRunning):
             self.server.sendData(msg)
         else:
@@ -102,7 +108,7 @@ class MainWindow(QtWidgets.QMainWindow, Ui_MainWindow):
         if(self.serverRunning):
             self.server.terminate()
             self.serverRunning = False
-            # TODO: Fix assertion error
+            # TODO (Vatan): Fix assertion error
             self.serverThread._stop()
             # self.serverThread.join()
     
