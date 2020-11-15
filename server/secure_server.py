@@ -18,15 +18,18 @@ class Server():
             self.serv.bind((self.host, self.port))
             self.serv.listen()
             self.conn, addr = self.serv.accept()
-            with self.conn:
-                print('Connected by', addr)
-                while self.running:
-                    self.isConnected = True
-                    data = self.conn.recv(1024)
-                    dataStr = data.decode("utf-8")
-                    print(dataStr)
-                    textBrowser.append("Received " + dataStr)
-                    # self.conn.sendall(data)
+            try:
+                with self.conn:
+                    print('Connected by', addr)
+                    while self.running:
+                        self.isConnected = True
+                        data = self.conn.recv(1024)
+                        dataStr = data.decode("utf-8")
+                        print(dataStr)
+                        textBrowser.append("Received " + dataStr)
+                        # self.conn.sendall(data)
+            except:
+                print("Cannot connect client")
 
     def sendData(self, msg):
         if(self.isConnected and self.running):
@@ -69,7 +72,7 @@ class MainWindow(QtWidgets.QMainWindow, Ui_MainWindow):
 
     def sendCommandCallback(self):
         text = self.commandPlainTextEdit.toPlainText()
-        self.textBrowser.append(text + " message send sent to client")
+        self.textBrowser.append(text + " message sent to client")
         self.sendEncryptedCommand(text)
 
     def runServerCallback(self):
