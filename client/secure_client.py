@@ -4,6 +4,47 @@ import socket
 from threading import Thread 
 from MainWindow import Ui_MainWindow
 
+class Client():
+    def __init__(self, textBrowser):
+        self.sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+        self.host = "127.0.0.1"
+        self.port = 65437
+        # Non blocking connection
+        # self.sock.settimeout(0.0)
+        self.isConnected = False
+        self.textBrowser = textBrowser
+        try:
+            self.sock.connect((self.host, self.port))   
+            self.isConnected = True
+        except:
+            self.textBrowser.append("Cannot connect to server")
+
+    # Receive data from server
+    def run(self):
+        while self.isConnected:
+            try:
+                data = self.sock.recv(1024)
+                msg = self.decrypt(data.decode("utf-8"))
+                self.textBrowser.append("Message received from client: " + msg)
+                # TODO: If rekey -> call rekey function
+            except:
+                pass
+
+    def sendData(self, msg):
+        if(self.isConnected):
+            self.sock.sendall(str.encode(self.encrypt(msg), "utf-8"))
+
+    def terminate(self):
+        self.isConnected = False
+
+    # TODO: Implement encrypt
+    def encrypt(self, msg):
+        return msg
+
+    # TODO: Implement decrypt
+    def decrypt(self, msg):
+        return msg
+
 class MainWindow(QtWidgets.QMainWindow, Ui_MainWindow):
     def __init__(self, *args, obj=None, **kwargs):
         super(MainWindow, self).__init__(*args, **kwargs)
@@ -12,6 +53,8 @@ class MainWindow(QtWidgets.QMainWindow, Ui_MainWindow):
         self.rekeyButton.clicked.connect(self.rekeyButtonCallback)
         self.runClientButton.clicked.connect(self.runClientCallback)
         self.sendButton.clicked.connect(self.sendCommandCallback)
+        self.client = None
+        self.isClientUp = False
 
     def rekeyButtonCallback(self):
         self.textBrowser.append("Rekey issued from client")
@@ -19,18 +62,32 @@ class MainWindow(QtWidgets.QMainWindow, Ui_MainWindow):
 
     def sendCommandCallback(self):
         text = self.commandPlainTextEdit.toPlainText()
-        self.textBrowser.append(text + " message sent to client")
+        # self.textBrowser.append(text + " message sent to client")
         self.sendEncryptedCommand(text)
 
     def runClientCallback(self):
-        self.textBrowser.append("Starting client ...")
+        if(not self.isClientUp):
+            self.client = Client(self.textBrowser)
+            self.clientThread = Thread(target = self.client.run, args =())
+            self.clientThread.start()
+            if(self.client.isConnected):
+                self.textBrowser.append("Client stated")
+                self.isClientUp = True
+                # TODO: Add green client status button
+        else:
+            self.textBrowser.append("Client already running")
 
     def sendEncryptedCommand(self, msg):
-        # print("Sending encrypted message: ", msg)
         self.textBrowser.append("Sending encrypted message: " + msg)
+        if(self.isClientUp):
+            self.client.sendData(msg)
+        else:
+            self.textBrowser.append("Client not connected cannot send message")
 
     def closeEvent(self, event):
-        pass
+        if(self.isClientUp):
+            self.client.terminate()
+            self.clientThread._stop()
     
 def main():
     app = QtWidgets.QApplication(sys.argv)

@@ -5,29 +5,33 @@ from threading import Thread
 from MainWindow import Ui_MainWindow
 
 class Server():
-    def __init__(self):
+    def __init__(self, textBrowser):
         self.serv = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
         self.host = "127.0.0.1"
         self.port = 65437
+        # Non blocking connection
+        # self.serv.settimeout(0.0)
         self.running = True
         self.isConnected = False
-        self.last_data = ""
+        self.textBrowser = textBrowser
 
-    def run(self, textBrowser):
+    def run(self):
         if(self.running):
             self.serv.bind((self.host, self.port))
             self.serv.listen()
             self.conn, addr = self.serv.accept()
             try:
                 with self.conn:
-                    print('Connected by', addr)
+                    self.textBrowser.append("Connected by" + str(addr[0]) + ", " + str(addr[1]))
                     while self.running:
                         self.isConnected = True
-                        data = self.conn.recv(1024)
-                        dataStr = data.decode("utf-8")
-                        print(dataStr)
-                        textBrowser.append("Received " + dataStr)
-                        # self.conn.sendall(data)
+                        try:
+                            data = self.conn.recv(1024)
+                            dataStr = data.decode("utf-8")
+                            self.textBrowser.append("Received " + dataStr)
+                            # TODO: If rekey -> call rekey function
+                        except:
+                            pass
             except:
                 print("Cannot connect client")
 
@@ -53,7 +57,6 @@ class Server():
         return msg
 
 
-
 class MainWindow(QtWidgets.QMainWindow, Ui_MainWindow):
     def __init__(self, *args, obj=None, **kwargs):
         super(MainWindow, self).__init__(*args, **kwargs)
@@ -72,21 +75,22 @@ class MainWindow(QtWidgets.QMainWindow, Ui_MainWindow):
 
     def sendCommandCallback(self):
         text = self.commandPlainTextEdit.toPlainText()
-        self.textBrowser.append(text + " message sent to client")
+        # self.textBrowser.append(text + " message sent to client")
         self.sendEncryptedCommand(text)
 
     def runServerCallback(self):
         if(not self.serverRunning):
             self.textBrowser.append("Starting server ...")
-            self.server = Server()
-            self.serverThread = Thread(target = self.server.run, args =(self.textBrowser, )) 
+            self.server = Server(self.textBrowser)
+            self.serverThread = Thread(target = self.server.run, args =()) 
             self.serverThread.start()
+            # ? Check if server started
             self.serverRunning = True
+            # TODO: Add green server status button
         else:
             self.textBrowser.append("Server already running")
 
     def sendEncryptedCommand(self, msg):
-        # print("Sending encrypted message: ", msg)
         self.textBrowser.append("Sending encrypted message: " + msg)
         # TODO: Fix send message from server
         if(self.serverRunning):
