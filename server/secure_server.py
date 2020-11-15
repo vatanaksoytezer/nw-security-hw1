@@ -23,12 +23,12 @@ class Server():
             self.conn, addr = self.serv.accept()
             try:
                 with self.conn:
-                    self.textBrowser.append("Connected by" + str(addr[0]) + ", " + str(addr[1]))
+                    self.textBrowser.append("Connected by " + str(addr[0]) + ", " + str(addr[1]))
                     while self.running:
                         self.isConnected = True
                         try:
                             data = self.conn.recv(1024)
-                            msg = data.decode("utf-8")
+                            msg = self.decrypt(data.decode("utf-8"))
                             self.textBrowser.append("Received " + msg)
                             if msg == "rekey":
                                 self.mainwindow.rekey()
@@ -40,7 +40,7 @@ class Server():
     def sendData(self, msg):
         if(self.isConnected and self.running):
             msg = self.encrypt(msg)
-            self.conn.sendall(str.encode(msg, "utf-8"))
+            self.conn.sendall(str.encode(self.encrypt(msg), "utf-8"))
         else:
             print("Server not connected to any client")
 
