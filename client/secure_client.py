@@ -68,12 +68,16 @@ class Client():
         while self.isConnected:
             try:
                 data = self.sock.recv(1024)
-                # msg = self.decrypt(data.decode("utf-8"))
-                print(data)
-                msg = self.decrypt(data)
-                self.textBrowser.append("Message received from server: " + msg)
-                if msg == "rekey":
-                    self.mainwindow.rekey()
+                raw_data = data[:-64]
+                hmac = data[-64:].decode("utf-8")
+                msg = self.decrypt(raw_data)
+                self_mac = self.get_signature_str(msg)
+                if(self_mac == hmac):
+                    self.textBrowser.append("Message received from server: " + msg)
+                    if msg == "rekey":
+                        self.mainwindow.rekey()
+                else:
+                    self.textBrowser.append("Authentication error")
             except:
                 pass
 
@@ -85,10 +89,19 @@ class Client():
     def terminate(self):
         self.isConnected = False
 
+    def get_signature_str(self, msg):
+        mac = hmac.new(self.currentKey[32:], bytes(msg, 'utf-8'), hashlib.sha256).hexdigest()
+        return mac
+
+    def get_signature_bytes(self, msg):
+        mac = hmac.new(self.currentKey[32:], msg, hashlib.sha256).hexdigest()
+        return mac
+
     def encrypt(self, msg):
         aes = AESCipher(self.currentKey)
+        signature = self.get_signature_str(msg)
         encrypted = aes.encrypt(msg)
-        return encrypted
+        return (encrypted + bytes(signature, 'utf-8'))
     
     def decrypt(self, msg):
         aes = AESCipher(self.currentKey)
@@ -183,6 +196,8 @@ class MainWindow(QtWidgets.QMainWindow, Ui_MainWindow):
                 self.textBrowser.append("Client stated")
                 self.isClientUp = True
                 # TODO (Vatan): Add green client status button
+                self.runClientButton.setStyleSheet("background-color : green")
+                self.runClientButton.setText("Client Running")
         else:
             self.textBrowser.append("Client already running")
 

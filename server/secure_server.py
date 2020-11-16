@@ -57,8 +57,6 @@ class Server():
         self.hash_array_2_index = self.array_length
 
         self.generateInitialKey()
-        # self.test_msg()
-        # self.test_aes()
 
     def run(self):
         if(self.running):
@@ -72,12 +70,16 @@ class Server():
                         self.isConnected = True
                         try:
                             data = self.conn.recv(1024)
-                            # msg = self.decrypt(data.decode("utf-8"))
-                            print(data)
-                            msg = self.decrypt(data)
-                            self.textBrowser.append("Message received from client: " + msg)
-                            if msg == "rekey":
-                                self.mainwindow.rekey()
+                            raw_data = data[:-64]
+                            hmac = data[-64:].decode("utf-8")
+                            msg = self.decrypt(raw_data)
+                            self_mac = self.get_signature_str(msg)
+                            if(self_mac == hmac):
+                                self.textBrowser.append("Message received from client: " + msg)
+                                if msg == "rekey":
+                                    self.mainwindow.rekey()
+                            else:
+                                self.textBrowser.append("Authentication Error")
                         except:
                             pass
             except:
@@ -85,9 +87,6 @@ class Server():
 
     def sendData(self, msg):
         if(self.isConnected and self.running):
-            # msg = self.encrypt(msg)
-            # ! Check correctness
-            # self.conn.sendall(str.encode(self.encrypt(msg), "utf-8"))
             self.conn.sendall(self.encrypt(msg))
         else:
             print("Server not connected to any client")
@@ -98,36 +97,11 @@ class Server():
         if(self.isConnected):
             self.conn.close()
 
-    # TODO (Erkut): Implement encrypt
-    def decrypt2(self, msg):
-        decryptor = AES.new(self.currentKey[0:16], AES.MODE_CBC, self.currentKey[16:32])
-        decrypted = decryptor.decrypt(str.encode(msg, 'utf-8'))
-        msg = decrypted.hex()
-        # self.dmac = hmac.new(str.encode(msg, 'utf-8'), self.currentKey[32:], hashlib.sha3_256)
-        # self.dmac = hmac.new(self.currentKey[32:], str.encode(msg, "utf-8"), hashlib.sha256).hexdigest()
-        # print("DMAC: ", self.dmac)
-        # print("EMAC: ", self.emac)
-        # if self.emac == self.dmac:
-        #     print("Message Source Authenticated!")
-        # else:
-        #     print("False Message Source!!!!")
-        return msg
-
-    # TODO (Erkut): Implement decrypt
-    def encrypt2(self, msg):
-        # print(self.currentKey[0:16])
-        encryptor = AES.new(self.currentKey[0:16], AES.MODE_CBC, self.currentKey[16:32])
-        # TODO: Verbose HMAC, AES, IV
-        # self.emac = hmac.new(str.encode(msg, 'utf-8'), self.currentKey[32:], hashlib.sha3_256)
-        # self.emac = hmac.new(self.currentKey[32:], str.encode(msg, "utf-8"), hashlib.sha256).hexdigest()
-        encrypted = encryptor.encrypt(str.encode(msg, 'utf-8'))
-        msg = encrypted.hex()
-        return msg
-
     def encrypt(self, msg):
         aes = AESCipher(self.currentKey)
+        signature = self.get_signature_str(msg)
         encrypted = aes.encrypt(msg)
-        return encrypted
+        return (encrypted + bytes(signature, 'utf-8'))
     
     def decrypt(self, msg):
         aes = AESCipher(self.currentKey)
@@ -169,33 +143,19 @@ class Server():
         # Show current key
         self.mainwindow.currentKeyEmptyLabel.setText(self.currentKey.hex())
 
-    def random_prime(self):
-        chck = False
-        chck2 = False
-        chck_equal = True
-        while chck == False and chck2 == False and chck_equal == True:
-            p = random.randrange(2 ** (127), 2 ** 128 - 1)
-            p2 = random.randrange(2 ** (127), 2 ** 128 - 1)
-            chck = pyprimes.isprime(p)
-            chck2 = pyprimes.isprime(p2)
-            if p == p2:
-                chck_equal = True
-            else:
-                chck_equal = False
-        return p, p2
-
     def test_msg(self):
         msg = "Hello World"
         encrypted = self.encrypt(msg)
         decrypted = self.decrypt(encrypted)
         print("Decrypted: ", decrypted)
 
-    # def test_aes(self):
-    #     msg = "HelloHello"
-    #     aes = AESCipher(self.currentKey)
-    #     encrypted = aes.encrypt(msg)
-    #     decrypted = aes.decrypt(encrypted)
-    #     print("Decrypted: ", decrypted)
+    def get_signature_str(self, msg):
+        mac = hmac.new(self.currentKey[32:], bytes(msg, 'utf-8'), hashlib.sha256).hexdigest()
+        return mac
+
+    def get_signature_bytes(self, msg):
+        mac = hmac.new(self.currentKey[32:], msg, hashlib.sha256).hexdigest()
+        return mac
 
 class MainWindow(QtWidgets.QMainWindow, Ui_MainWindow):
     def __init__(self, *args, obj=None, **kwargs):
@@ -210,11 +170,9 @@ class MainWindow(QtWidgets.QMainWindow, Ui_MainWindow):
         self.server = None
 
     def rekeyButtonCallback(self):
-        # self.textBrowser.append("Rekey issued from server")
         self.sendEncryptedCommand("rekey")
         self.rekey()
 
-    # TODO (Erkut): Implement rekey
     def rekey(self):
         if(self.serverRunning == True):
             self.textBrowser.append("Rekeying ...")
@@ -224,7 +182,6 @@ class MainWindow(QtWidgets.QMainWindow, Ui_MainWindow):
 
     def sendCommandCallback(self):
         text = self.commandPlainTextEdit.toPlainText()
-        # self.textBrowser.append(text + " message sent to client")
         self.sendEncryptedCommand(text)
 
     def runServerCallback(self):
