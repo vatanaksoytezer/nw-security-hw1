@@ -75,6 +75,7 @@ class Server():
                             msg = self.decrypt(raw_data)
                             self_mac = self.get_signature_str(msg)
                             if(self_mac == hmac):
+                                self.textBrowser.append("Hash matched, reading message of hash: " + self_mac)
                                 self.textBrowser.append("Message received from client: " + msg)
                                 if msg == "rekey":
                                     self.mainwindow.rekey()
@@ -110,10 +111,10 @@ class Server():
 
     def generateInitialKey(self):
         # Generate seed
-        seed1, seed2 = 1, 7 # self.random_prime()
+        seed1, seed2 = 1, 7
         # Seeds to bytes
-        seed_bytes_1 = bytes(str(seed1), 'ascii') # int.to_bytes(seed1)
-        seed_bytes_2 = bytes(str(seed2), 'ascii') # int.to_bytes(seed2)
+        seed_bytes_1 = bytes(str(seed1), 'ascii')
+        seed_bytes_2 = bytes(str(seed2), 'ascii')
         # Populate keys
         key_1 = SHA512.new(seed_bytes_1)
         key_2 = SHA512.new(seed_bytes_2)
@@ -129,7 +130,9 @@ class Server():
             self.hash_array_2[self.hash_array_2_index].digest())])
         # Show current key
         self.mainwindow.currentKeyEmptyLabel.setText(self.currentKey.hex())
-        print(self.currentKey.hex())
+        self.mainwindow.aesEncryptEmpytLabel.setText(self.currentKey[0:16].hex())
+        self.mainwindow.aesIVEmptyLabel.setText(self.currentKey[16:32].hex())
+        self.mainwindow.shaEmptyLabel.setText(self.currentKey[32:].hex())
         
 
     def rekey(self):
@@ -142,6 +145,9 @@ class Server():
             self.hash_array_2[self.hash_array_2_index].digest())])
         # Show current key
         self.mainwindow.currentKeyEmptyLabel.setText(self.currentKey.hex())
+        self.mainwindow.aesEncryptEmpytLabel.setText(self.currentKey[0:16].hex())
+        self.mainwindow.aesIVEmptyLabel.setText(self.currentKey[16:32].hex())
+        self.mainwindow.shaEmptyLabel.setText(self.currentKey[32:].hex())
 
     def test_msg(self):
         msg = "Hello World"
@@ -192,7 +198,8 @@ class MainWindow(QtWidgets.QMainWindow, Ui_MainWindow):
             # ? Check if server started
             self.serverRunning = True
             self.textBrowser.append("Server started")
-            # TODO (Vatan): Add green server status button
+            self.runServerButton.setStyleSheet("background-color : green")
+            self.runServerButton.setText("Server Running")
         else:
             self.textBrowser.append("Server already running")
 
