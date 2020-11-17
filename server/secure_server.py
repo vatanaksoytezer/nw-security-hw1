@@ -5,13 +5,9 @@ from threading import Thread
 from MainWindow import Ui_MainWindow
 from Crypto.Hash import SHA512
 from Crypto.Cipher import AES
-import random
-import pyprimes
-import hashlib
 import hmac
 import base64
 import hashlib
-from Crypto.Cipher import AES
 
 class AESCipher(object):
 

@@ -5,13 +5,9 @@ from threading import Thread
 from MainWindow import Ui_MainWindow
 from Crypto.Hash import SHA512
 from Crypto.Cipher import AES
-import random
-import pyprimes
-import hashlib
 import hmac
 import base64
 import hashlib
-from Crypto.Cipher import AES
 
 class AESCipher(object):
 
@@ -148,21 +144,6 @@ class Client():
         self.mainwindow.aesEncryptEmpytLabel.setText(self.currentKey[0:16].hex())
         self.mainwindow.aesIVEmptyLabel.setText(self.currentKey[16:32].hex())
         self.mainwindow.shaEmptyLabel.setText(self.currentKey[32:].hex())
-
-    def random_prime(self):
-        chck = False
-        chck2 = False
-        chck_equal = True
-        while chck == False and chck2 == False and chck_equal == True:
-            p = random.randrange(2 ** (127), 2 ** 128 - 1)
-            p2 = random.randrange(2 ** (127), 2 ** 128 - 1)
-            chck = pyprimes.isprime(p)
-            chck2 = pyprimes.isprime(p2)
-            if p == p2:
-                chck_equal = True
-            else:
-                chck_equal = False
-        return p, p2
 
 class MainWindow(QtWidgets.QMainWindow, Ui_MainWindow):
     def __init__(self, *args, obj=None, **kwargs):
